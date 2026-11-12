@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#0084FF</color>
+    <color name="primary_dark">#0066CC</color>
+    <color name="accent">#00D4FF</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="gray_light">#F0F2F5</color>
+    <color name="status_bar_light">#0084FF</color>
+    <color name="status_bar_dark">#0050A0</color>
+    <color name="primary_dark_theme">#004BA0</color>
+    <color name="dialog_button_text">#0084FF</color>
+</resources>
