@@ -356,7 +356,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_settings) {
-            performLogout();
+            startActivity(new Intent(this, SettingsActivity.class));
             return true;
         } else if (id == R.id.action_add_friend) {
             openFriendRequests();

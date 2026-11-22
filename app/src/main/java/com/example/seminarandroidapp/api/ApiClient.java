@@ -25,8 +25,7 @@ public class ApiClient {
 
             Interceptor authInterceptor = chain -> {
                 Request original = chain.request();
-                Request.Builder builder = original.newBuilder()
-                        .header("Content-Type", "application/json");
+                Request.Builder builder = original.newBuilder();
 
                 String token = Prefs.getToken(context);
                 if (token != null && !token.isEmpty()) {

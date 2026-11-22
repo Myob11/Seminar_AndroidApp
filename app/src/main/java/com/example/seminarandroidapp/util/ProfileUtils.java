@@ -4,8 +4,29 @@ import android.content.Context;
 import android.widget.ImageView;
 import com.bumptech.glide.Glide;
 import com.example.seminarandroidapp.R;
+import com.example.seminarandroidapp.api.User;
 
 public class ProfileUtils {
+
+    public static void loadProfilePicture(Context context, User user, ImageView imageView) {
+        if (context == null || imageView == null) {
+            return;
+        }
+        String profilePicture = user != null ? user.getProfilePicture() : null;
+        if (profilePicture == null || profilePicture.isEmpty()) {
+            loadProfilePicture(context, user != null ? user.getUsername() : null, imageView);
+            return;
+        }
+
+        String imageUrl = profilePicture.startsWith("http")
+                ? profilePicture
+                : "https://backend.kbnet.si" + (profilePicture.startsWith("/") ? profilePicture : "/" + profilePicture);
+        Glide.with(context)
+                .load(imageUrl)
+                .placeholder(R.mipmap.ic_launcher_round)
+                .error(R.mipmap.ic_launcher_round)
+                .into(imageView);
+    }
 
     public static void loadProfilePicture(Context context, String username, ImageView imageView) {
         if (context == null || imageView == null) {

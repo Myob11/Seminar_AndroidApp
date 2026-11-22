@@ -8,7 +8,7 @@
         app:showAsAction="always" />
     <item
         android:id="@+id/action_settings"
-        android:icon="@android:drawable/ic_menu_preferences"
-        android:title="Settings"
+        android:icon="@drawable/ic_settings_gear"
+        android:title="@string/settings"
         app:showAsAction="always" />
 </menu>

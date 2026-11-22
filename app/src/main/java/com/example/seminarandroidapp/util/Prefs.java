@@ -8,6 +8,7 @@ public class Prefs {
     private static final String KEY_TOKEN = "jwt_token";
     private static final String KEY_USER_ID = "user_id";
     private static final String KEY_USERNAME = "username";
+    private static final String KEY_DARK_MODE = "dark_mode";
     private static final String KEY_SHARED_SECRET_PREFIX = "secret_";
     private static SharedPreferences sharedPreferences;
 
@@ -41,6 +42,18 @@ public class Prefs {
     public static String getUsername(Context context) {
         init(context);
         return sharedPreferences != null ? sharedPreferences.getString(KEY_USERNAME, null) : null;
+    }
+
+    public static boolean isDarkMode(Context context) {
+        init(context);
+        return sharedPreferences != null && sharedPreferences.getBoolean(KEY_DARK_MODE, false);
+    }
+
+    public static void saveDarkMode(Context context, boolean enabled) {
+        init(context);
+        if (sharedPreferences != null) {
+            sharedPreferences.edit().putBoolean(KEY_DARK_MODE, enabled).apply();
+        }
     }
 
     public static boolean isLoggedIn(Context context) {
