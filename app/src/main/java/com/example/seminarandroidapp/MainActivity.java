@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -39,6 +41,17 @@ import java.util.Locale;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final long REFRESH_INTERVAL_MILLIS = 15_000L;
+    private final Handler refreshHandler = new Handler(Looper.getMainLooper());
+    private final Runnable periodicRefresh = new Runnable() {
+        @Override
+        public void run() {
+            refreshMainContent();
+            refreshFriendRequestCount();
+            refreshHandler.postDelayed(this, REFRESH_INTERVAL_MILLIS);
+        }
+    };
 
     private RecyclerView recyclerViewConversations;
     private ConversationsAdapter adapter;
@@ -157,14 +170,19 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         refreshMainContent();
         refreshFriendRequestCount();
+        refreshHandler.removeCallbacks(periodicRefresh);
+        refreshHandler.postDelayed(periodicRefresh, REFRESH_INTERVAL_MILLIS);
+    }
+
+    @Override
+    protected void onPause() {
+        refreshHandler.removeCallbacks(periodicRefresh);
+        super.onPause();
     }
 
     private void refreshMainContent() {
-        if (friendsCall != null) {
-            friendsCall.cancel();
-        }
-        if (conversationsCall != null) {
-            conversationsCall.cancel();
+        if (friendsCall != null || conversationsCall != null) {
+            return;
         }
         friendsLoaded = false;
         conversationsLoaded = false;
@@ -377,7 +395,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshFriendRequestCount() {
         if (friendRequestsCall != null) {
-            friendRequestsCall.cancel();
+            return;
         }
         Call<List<FriendRequest>> call = ApiClient.getApiService(this).getFriendRequests();
         friendRequestsCall = call;
