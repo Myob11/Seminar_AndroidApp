@@ -1,6 +1,7 @@
 package com.example.seminarandroidapp;
 
 public class Conversation {
+    private String conversationId;
     private String targetUserId;
     private String contactName;
     private String lastMessage;
@@ -10,10 +11,27 @@ public class Conversation {
     }
 
     public Conversation(String targetUserId, String contactName, String lastMessage, String time) {
+        this(null, targetUserId, contactName, lastMessage, time);
+    }
+
+    public Conversation(String conversationId, String targetUserId, String contactName, String lastMessage, String time) {
+        this.conversationId = conversationId;
         this.targetUserId = targetUserId;
         this.contactName = contactName;
         this.lastMessage = lastMessage;
         this.time = time;
+    }
+
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
+    }
+
+    public boolean hasDirectConversation() {
+        return conversationId != null && !conversationId.isEmpty();
     }
 
     public String getTargetUserId() {

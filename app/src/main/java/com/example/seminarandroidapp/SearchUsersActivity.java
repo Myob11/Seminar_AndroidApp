@@ -19,7 +19,9 @@ import com.example.seminarandroidapp.api.FriendRequestBody;
 import com.example.seminarandroidapp.api.User;
 import com.google.android.material.tabs.TabLayout;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -32,7 +34,10 @@ public class SearchUsersActivity extends AppCompatActivity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
     private Call<List<User>> activeSearch;
+    private Call<List<User>> friendsCall;
     private Call<List<FriendRequest>> requestsCall;
+    private final Set<String> acceptedFriendIds = new HashSet<>();
+    private boolean friendsLoaded;
     private UsersAdapter usersAdapter;
     private FriendRequestsAdapter requestsAdapter;
     private RecyclerView recyclerView;
@@ -109,6 +114,7 @@ public class SearchUsersActivity extends AppCompatActivity {
         });
 
         loadFriendRequests();
+        loadAcceptedFriends();
     }
 
     private void showSection(boolean requests) {
@@ -156,6 +162,11 @@ public class SearchUsersActivity extends AppCompatActivity {
             showStatus("Search text must be 64 characters or fewer");
             return;
         }
+        if (!friendsLoaded) {
+            showStatus("Loading your friends…");
+            loadAcceptedFriends();
+            return;
+        }
 
         showStatus("Searching…");
         String query = currentQuery;
@@ -174,10 +185,16 @@ public class SearchUsersActivity extends AppCompatActivity {
                 }
                 activeSearch = null;
                 if (response.isSuccessful() && response.body() != null) {
-                    List<User> users = response.body();
+                    List<User> users = new ArrayList<>();
+                    for (User user : response.body()) {
+                        if (user != null && user.getId() != null
+                                && !acceptedFriendIds.contains(user.getId())) {
+                            users.add(user);
+                        }
+                    }
                     usersAdapter.updateUsers(users);
                     if (users.isEmpty()) {
-                        showStatus("No users found");
+                        showStatus("No new people found");
                     } else {
                         hideStatus();
                     }
@@ -197,6 +214,58 @@ public class SearchUsersActivity extends AppCompatActivity {
                 showStatus("Search failed. Check your connection and try again.");
             }
         });
+    }
+
+    private void loadAcceptedFriends() {
+        if (friendsLoaded || friendsCall != null) {
+            return;
+        }
+
+        Call<List<User>> call = ApiClient.getApiService(this).getFriends();
+        friendsCall = call;
+        call.enqueue(new Callback<>() {
+            @Override
+            public void onResponse(@NonNull Call<List<User>> call, @NonNull Response<List<User>> response) {
+                if (friendsCall != call || call.isCanceled()) {
+                    return;
+                }
+                friendsCall = null;
+                if (!response.isSuccessful() || response.body() == null) {
+                    showFriendsLoadError();
+                    return;
+                }
+
+                acceptedFriendIds.clear();
+                for (User friend : response.body()) {
+                    if (friend != null && friend.getId() != null) {
+                        acceptedFriendIds.add(friend.getId());
+                    }
+                }
+                friendsLoaded = true;
+
+                if (!showingRequests && !currentQuery.isEmpty()) {
+                    queueSearch(currentQuery, 0L);
+                } else if (!showingRequests) {
+                    showStatus("Search for people by username");
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<List<User>> call, @NonNull Throwable t) {
+                if (friendsCall == call) {
+                    friendsCall = null;
+                }
+                if (!call.isCanceled()) {
+                    showFriendsLoadError();
+                }
+            }
+        });
+    }
+
+    private void showFriendsLoadError() {
+        if (!showingRequests) {
+            showStatus("Could not load your friends. Try searching again.");
+        }
     }
 
     private void sendFriendRequest(User user) {
@@ -301,6 +370,10 @@ public class SearchUsersActivity extends AppCompatActivity {
             @Override
             public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> response) {
                 if (response.isSuccessful()) {
+                    if (accept && request.getRequester() != null && request.getRequester().getId() != null) {
+                        acceptedFriendIds.add(request.getRequester().getId());
+                        friendsLoaded = true;
+                    }
                     requestsAdapter.removeRequest(request.getId());
                     updateRequestsTabTitle();
                     showRequestListState();
@@ -364,6 +437,9 @@ public class SearchUsersActivity extends AppCompatActivity {
         }
         if (requestsCall != null) {
             requestsCall.cancel();
+        }
+        if (friendsCall != null) {
+            friendsCall.cancel();
         }
         super.onDestroy();
     }

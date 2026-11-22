@@ -16,6 +16,7 @@ import com.example.seminarandroidapp.util.ProfileUtils;
 import com.example.seminarandroidapp.util.SignalManager;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdapter.ViewHolder> {
 
@@ -44,19 +45,20 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     }
 
     public void updateData(List<Conversation> newList) {
-        this.conversations = newList;
+        this.conversations = new ArrayList<>(newList);
         this.filteredList = new ArrayList<>(newList);
         notifyDataSetChanged();
     }
 
     public void filter(String query) {
         filteredList.clear();
-        if (query.isEmpty()) {
+        String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        if (normalizedQuery.isEmpty()) {
             filteredList.addAll(conversations);
         } else {
-            String lowerCaseQuery = query.toLowerCase().trim();
             for (Conversation conv : conversations) {
-                if (conv.getContactName().toLowerCase().contains(lowerCaseQuery)) {
+                String name = conv.getContactName();
+                if (name != null && name.toLowerCase(Locale.ROOT).contains(normalizedQuery)) {
                     filteredList.add(conv);
                 }
             }
@@ -82,7 +84,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         String targetUserId = conversation.getTargetUserId();
         String secretB64 = (targetUserId != null) ? Prefs.getSharedSecret(targetUserId) : null;
 
-        if (secretB64 != null && lastMsg != null && !lastMsg.isEmpty() && 
+        if (conversation.hasDirectConversation() && secretB64 != null && lastMsg != null && !lastMsg.isEmpty() &&
             !lastMsg.equals("No messages yet") && !lastMsg.equals("Tap to chat")) {
             try {
                 byte[] secret = Base64.decode(secretB64, Base64.NO_WRAP);

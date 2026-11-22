@@ -30,6 +30,15 @@ public interface ApiService {
     @GET("api/users/search")
     Call<List<User>> searchUsers(@Query("q") String query);
 
+    @GET("api/friends")
+    Call<List<User>> getFriends();
+
+    @GET("api/conversations/direct")
+    Call<List<DirectConversation>> getDirectConversations();
+
+    @POST("api/conversations/direct")
+    Call<DirectConversation> createDirectConversation(@Body DirectConversationRequest request);
+
     @POST("api/friends/requests")
     Call<ResponseBody> sendFriendRequest(@Body FriendRequestBody request);
 
