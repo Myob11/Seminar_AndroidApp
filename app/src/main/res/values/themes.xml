@@ -17,5 +17,7 @@
         <item name="alertDialogTheme">@style/ThemeOverlay.App.AlertDialog</item>
     </style>
 
+    <style name="ThemeOverlay.App.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog" />
+
     <style name="Theme.SeminarAndroidApp" parent="Base.Theme.SeminarAndroidApp" />
 </resources>
