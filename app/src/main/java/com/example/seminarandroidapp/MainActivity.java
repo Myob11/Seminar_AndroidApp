@@ -6,6 +6,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -73,6 +74,13 @@ public class MainActivity extends AppCompatActivity {
         searchView = findViewById(R.id.searchView);
         recyclerViewConversations = findViewById(R.id.recyclerViewConversations);
         recyclerViewConversations.setLayoutManager(new LinearLayoutManager(this));
+        recyclerViewConversations.setFocusableInTouchMode(true);
+        recyclerViewConversations.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN && searchView.hasFocus()) {
+                recyclerViewConversations.requestFocus();
+            }
+            return false;
+        });
 
         adapter = new ConversationsAdapter(new ArrayList<>(), this::onConversationSelected, conversation -> { });
         recyclerViewConversations.setAdapter(adapter);
