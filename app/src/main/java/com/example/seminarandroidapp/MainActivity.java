@@ -1,6 +1,8 @@
 package com.example.seminarandroidapp;
 
 import android.content.Intent;
+import android.view.inputmethod.InputMethodManager;
+import android.content.Context;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -76,6 +78,22 @@ public class MainActivity extends AppCompatActivity {
         recyclerViewConversations.setAdapter(adapter);
 
         searchView.setQueryHint("Search friends and chats");
+        searchView.setOnQueryTextFocusChangeListener((view, hasFocus) -> {
+            adapter.setSearchFocused(hasFocus);
+            if (hasFocus) {
+                adapter.filter(currentSearchQuery);
+                return;
+            }
+
+            currentSearchQuery = "";
+            searchView.setQuery("", false);
+            adapter.filter("");
+            InputMethodManager inputMethodManager =
+                    (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (inputMethodManager != null) {
+                inputMethodManager.hideSoftInputFromWindow(searchView.getWindowToken(), 0);
+            }
+        });
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -180,6 +198,7 @@ public class MainActivity extends AppCompatActivity {
 
         List<Conversation> rows = new ArrayList<>();
         List<Conversation> searchableRows = new ArrayList<>();
+        List<Conversation> friendSuggestions = new ArrayList<>();
         Set<String> usersWithConversations = new HashSet<>();
         String currentUserId = Prefs.getUserId(this);
 
@@ -226,12 +245,14 @@ public class MainActivity extends AppCompatActivity {
             );
             row.setProfilePicture(friend.getProfilePicture());
             searchableRows.add(row);
+            friendSuggestions.add(row);
         }
 
         Collator collator = Collator.getInstance(Locale.getDefault());
         rows.sort((left, right) -> collator.compare(left.getContactName(), right.getContactName()));
         searchableRows.sort((left, right) -> collator.compare(left.getContactName(), right.getContactName()));
-        adapter.updateData(rows, searchableRows);
+        friendSuggestions.sort((left, right) -> collator.compare(left.getContactName(), right.getContactName()));
+        adapter.updateData(rows, searchableRows, friendSuggestions);
         adapter.filter(currentSearchQuery);
     }
 

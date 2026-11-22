@@ -22,7 +22,9 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
 
     private List<Conversation> conversations;
     private List<Conversation> searchCandidates;
+    private List<Conversation> friendSuggestions;
     private List<Conversation> filteredList;
+    private boolean searchFocused;
     private OnConversationClickListener listener;
     private OnConversationLongClickListener longClickListener;
 
@@ -41,21 +43,30 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     ) {
         this.conversations = conversations;
         this.searchCandidates = new ArrayList<>(conversations);
+        this.friendSuggestions = new ArrayList<>();
         this.filteredList = new ArrayList<>(conversations);
         this.listener = listener;
         this.longClickListener = longClickListener;
     }
 
-    public void updateData(List<Conversation> newList, List<Conversation> searchableList) {
+    public void updateData(List<Conversation> newList, List<Conversation> searchableList,
+                           List<Conversation> suggestions) {
         this.conversations = new ArrayList<>(newList);
         this.searchCandidates = new ArrayList<>(searchableList);
-        filter("");
+        this.friendSuggestions = new ArrayList<>(suggestions);
+        notifyDataSetChanged();
+    }
+
+    public void setSearchFocused(boolean focused) {
+        searchFocused = focused;
     }
 
     public void filter(String query) {
         filteredList.clear();
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-        List<Conversation> source = normalizedQuery.isEmpty() ? conversations : searchCandidates;
+        List<Conversation> source = normalizedQuery.isEmpty()
+                ? (searchFocused ? friendSuggestions : conversations)
+                : searchCandidates;
         if (normalizedQuery.isEmpty()) {
             filteredList.addAll(source);
         } else {
