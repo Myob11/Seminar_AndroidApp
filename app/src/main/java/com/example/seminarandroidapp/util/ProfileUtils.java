@@ -23,6 +23,7 @@ public class ProfileUtils {
                 : "https://backend.kbnet.si" + (profilePicture.startsWith("/") ? profilePicture : "/" + profilePicture);
         Glide.with(context)
                 .load(imageUrl)
+                .circleCrop()
                 .placeholder(R.mipmap.ic_launcher_round)
                 .error(R.mipmap.ic_launcher_round)
                 .into(imageView);
@@ -39,6 +40,7 @@ public class ProfileUtils {
         if (avatarUrl != null) {
             Glide.with(context)
                     .load(avatarUrl)
+                    .circleCrop()
                     .placeholder(R.mipmap.ic_launcher_round)
                     .error(R.mipmap.ic_launcher_round)
                     .into(imageView);

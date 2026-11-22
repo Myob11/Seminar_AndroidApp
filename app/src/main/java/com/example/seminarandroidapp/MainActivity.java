@@ -195,13 +195,19 @@ public class MainActivity extends AppCompatActivity {
             }
 
             usersWithConversations.add(friend.getId());
-            rows.add(new Conversation(
+            User latestFriend = findFriend(friend.getId());
+            if (latestFriend != null) {
+                friend = latestFriend;
+            }
+            Conversation row = new Conversation(
                     directConversation.getId(),
                     friend.getId(),
                     friend.getUsername(),
                     "Tap to chat",
                     ""
-            ));
+            );
+            row.setProfilePicture(friend.getProfilePicture());
+            rows.add(row);
         }
 
         for (User friend : friends) {
@@ -209,13 +215,15 @@ public class MainActivity extends AppCompatActivity {
                     || usersWithConversations.contains(friend.getId())) {
                 continue;
             }
-            rows.add(new Conversation(
+            Conversation row = new Conversation(
                     null,
                     friend.getId(),
                     friend.getUsername(),
                     "Start a conversation",
                     ""
-            ));
+            );
+            row.setProfilePicture(friend.getProfilePicture());
+            rows.add(row);
         }
 
         Collator collator = Collator.getInstance(Locale.getDefault());
@@ -259,7 +267,8 @@ public class MainActivity extends AppCompatActivity {
                 createConversationCall = null;
                 if (response.isSuccessful() && response.body() != null && response.body().getId() != null) {
                     DirectConversation created = response.body();
-                    created.setRecipient(new User(friendRow.getTargetUserId(), friendRow.getContactName()));
+                    created.setRecipient(new User(friendRow.getTargetUserId(), friendRow.getContactName(),
+                            friendRow.getProfilePicture()));
                     directConversations.add(created);
                     renderMainContent();
                     Toast.makeText(MainActivity.this, "Conversation created.", Toast.LENGTH_SHORT).show();

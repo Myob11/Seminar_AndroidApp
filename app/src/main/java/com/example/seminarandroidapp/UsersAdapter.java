@@ -74,7 +74,7 @@ public class UsersAdapter extends RecyclerView.Adapter<UsersAdapter.ViewHolder> 
         User user = users.get(position);
         String userId = user.getId();
         holder.userName.setText(user.getUsername());
-        ProfileUtils.loadProfilePicture(holder.itemView.getContext(), user.getUsername(), holder.userAvatar);
+        ProfileUtils.loadProfilePicture(holder.itemView.getContext(), user, holder.userAvatar);
 
         boolean requested = userId != null && requestedUserIds.contains(userId);
         boolean sending = userId != null && sendingUserIds.contains(userId);

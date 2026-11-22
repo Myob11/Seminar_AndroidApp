@@ -83,7 +83,7 @@ public class FriendRequestsAdapter extends RecyclerView.Adapter<FriendRequestsAd
         FriendRequest request = requests.get(position);
         String requesterName = request.getRequester() != null ? request.getRequester().getUsername() : "Unknown user";
         holder.requesterName.setText(requesterName);
-        ProfileUtils.loadProfilePicture(holder.itemView.getContext(), requesterName, holder.requesterAvatar);
+        ProfileUtils.loadProfilePicture(holder.itemView.getContext(), request.getRequester(), holder.requesterAvatar);
 
         boolean busy = request.getId() != null && busyRequestIds.contains(request.getId());
         holder.acceptButton.setEnabled(!busy);

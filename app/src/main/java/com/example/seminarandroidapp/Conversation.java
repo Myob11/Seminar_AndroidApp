@@ -6,6 +6,7 @@ public class Conversation {
     private String contactName;
     private String lastMessage;
     private String time;
+    private String profilePicture;
 
     public Conversation() {
     }
@@ -56,6 +57,14 @@ public class Conversation {
 
     public void setLastMessage(String lastMessage) {
         this.lastMessage = lastMessage;
+    }
+
+    public String getProfilePicture() {
+        return profilePicture;
+    }
+
+    public void setProfilePicture(String profilePicture) {
+        this.profilePicture = profilePicture;
     }
 
     public String getTime() {

@@ -39,7 +39,7 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.ViewHold
         holder.lastMessage.setText("Tap to start chatting");
         holder.time.setVisibility(View.GONE);
         
-        ProfileUtils.loadProfilePicture(holder.itemView.getContext(), friend.getUsername(), holder.profileImage);
+        ProfileUtils.loadProfilePicture(holder.itemView.getContext(), friend, holder.profileImage);
         
         holder.itemView.setOnClickListener(v -> listener.onFriendClick(friend));
     }

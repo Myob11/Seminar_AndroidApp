@@ -104,7 +104,10 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         context.getTheme().resolveAttribute(android.R.attr.textColorSecondary, typedValue, true);
         holder.lastMessage.setTextColor(typedValue.data);
         
-        ProfileUtils.loadProfilePicture(context, conversation.getContactName(), holder.profileImage);
+        ProfileUtils.loadProfilePicture(context,
+                new com.example.seminarandroidapp.api.User(
+                        conversation.getTargetUserId(), conversation.getContactName(), conversation.getProfilePicture()),
+                holder.profileImage);
         
         holder.itemView.setOnClickListener(v -> {
             listener.onConversationClick(conversation);
