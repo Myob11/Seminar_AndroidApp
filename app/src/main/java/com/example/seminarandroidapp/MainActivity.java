@@ -8,6 +8,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,6 +16,9 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.seminarandroidapp.api.ApiClient;
@@ -65,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
+        applyStatusBarInsetToToolbar(toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             String username = Prefs.getUsername(this);
@@ -117,6 +122,34 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
         });
+    }
+
+    private void applyStatusBarInsetToToolbar(Toolbar toolbar) {
+        ViewGroup.LayoutParams layoutParams = toolbar.getLayoutParams();
+        int baseHeight = layoutParams.height;
+        int basePaddingLeft = toolbar.getPaddingLeft();
+        int basePaddingTop = toolbar.getPaddingTop();
+        int basePaddingRight = toolbar.getPaddingRight();
+        int basePaddingBottom = toolbar.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(toolbar, (view, windowInsets) -> {
+            Insets safeTopInsets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout()
+            );
+            int topInset = safeTopInsets.top;
+
+            ViewGroup.LayoutParams updatedParams = view.getLayoutParams();
+            updatedParams.height = baseHeight + topInset;
+            view.setLayoutParams(updatedParams);
+            view.setPadding(
+                    basePaddingLeft,
+                    basePaddingTop + topInset,
+                    basePaddingRight,
+                    basePaddingBottom
+            );
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(toolbar);
     }
 
     @Override
