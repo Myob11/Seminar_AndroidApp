@@ -21,6 +21,7 @@ import java.util.Locale;
 public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdapter.ViewHolder> {
 
     private List<Conversation> conversations;
+    private List<Conversation> searchCandidates;
     private List<Conversation> filteredList;
     private OnConversationClickListener listener;
     private OnConversationLongClickListener longClickListener;
@@ -39,24 +40,26 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
             OnConversationLongClickListener longClickListener
     ) {
         this.conversations = conversations;
+        this.searchCandidates = new ArrayList<>(conversations);
         this.filteredList = new ArrayList<>(conversations);
         this.listener = listener;
         this.longClickListener = longClickListener;
     }
 
-    public void updateData(List<Conversation> newList) {
+    public void updateData(List<Conversation> newList, List<Conversation> searchableList) {
         this.conversations = new ArrayList<>(newList);
-        this.filteredList = new ArrayList<>(newList);
-        notifyDataSetChanged();
+        this.searchCandidates = new ArrayList<>(searchableList);
+        filter("");
     }
 
     public void filter(String query) {
         filteredList.clear();
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        List<Conversation> source = normalizedQuery.isEmpty() ? conversations : searchCandidates;
         if (normalizedQuery.isEmpty()) {
-            filteredList.addAll(conversations);
+            filteredList.addAll(source);
         } else {
-            for (Conversation conv : conversations) {
+            for (Conversation conv : source) {
                 String name = conv.getContactName();
                 if (name != null && name.toLowerCase(Locale.ROOT).contains(normalizedQuery)) {
                     filteredList.add(conv);

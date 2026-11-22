@@ -179,6 +179,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         List<Conversation> rows = new ArrayList<>();
+        List<Conversation> searchableRows = new ArrayList<>();
         Set<String> usersWithConversations = new HashSet<>();
         String currentUserId = Prefs.getUserId(this);
 
@@ -208,6 +209,7 @@ public class MainActivity extends AppCompatActivity {
             );
             row.setProfilePicture(friend.getProfilePicture());
             rows.add(row);
+            searchableRows.add(row);
         }
 
         for (User friend : friends) {
@@ -223,12 +225,13 @@ public class MainActivity extends AppCompatActivity {
                     ""
             );
             row.setProfilePicture(friend.getProfilePicture());
-            rows.add(row);
+            searchableRows.add(row);
         }
 
         Collator collator = Collator.getInstance(Locale.getDefault());
         rows.sort((left, right) -> collator.compare(left.getContactName(), right.getContactName()));
-        adapter.updateData(rows);
+        searchableRows.sort((left, right) -> collator.compare(left.getContactName(), right.getContactName()));
+        adapter.updateData(rows, searchableRows);
         adapter.filter(currentSearchQuery);
     }
 
