@@ -53,6 +53,14 @@ public class UsersAdapter extends RecyclerView.Adapter<UsersAdapter.ViewHolder> 
         notifyUser(userId);
     }
 
+    public void setRequestedUserIds(Set<String> userIds) {
+        requestedUserIds.clear();
+        if (userIds != null) {
+            requestedUserIds.addAll(userIds);
+        }
+        notifyDataSetChanged();
+    }
+
     private void notifyUser(String userId) {
         for (int i = 0; i < users.size(); i++) {
             if (userId != null && userId.equals(users.get(i).getId())) {

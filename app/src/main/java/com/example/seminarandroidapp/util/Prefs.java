@@ -2,6 +2,8 @@ package com.example.seminarandroidapp.util;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Prefs {
     private static final String PREF_NAME = "app_prefs";
@@ -9,6 +11,7 @@ public class Prefs {
     private static final String KEY_USER_ID = "user_id";
     private static final String KEY_USERNAME = "username";
     private static final String KEY_DARK_MODE = "dark_mode";
+    private static final String KEY_OUTGOING_REQUESTS_PREFIX = "outgoing_requests_";
     private static final String KEY_SHARED_SECRET_PREFIX = "secret_";
     private static SharedPreferences sharedPreferences;
 
@@ -53,6 +56,56 @@ public class Prefs {
         init(context);
         if (sharedPreferences != null) {
             sharedPreferences.edit().putBoolean(KEY_DARK_MODE, enabled).apply();
+        }
+    }
+
+    public static Set<String> getOutgoingFriendRequestIds(Context context) {
+        init(context);
+        String userId = getUserId(context);
+        if (sharedPreferences == null || userId == null) {
+            return new HashSet<>();
+        }
+        return new HashSet<>(sharedPreferences.getStringSet(
+                KEY_OUTGOING_REQUESTS_PREFIX + userId, new HashSet<>()));
+    }
+
+    public static void replaceOutgoingFriendRequestIds(Context context, Set<String> requestIds) {
+        init(context);
+        String userId = getUserId(context);
+        if (sharedPreferences != null && userId != null) {
+            sharedPreferences.edit()
+                    .putStringSet(KEY_OUTGOING_REQUESTS_PREFIX + userId,
+                            requestIds == null ? new HashSet<>() : new HashSet<>(requestIds))
+                    .apply();
+        }
+    }
+
+    public static void addOutgoingFriendRequest(Context context, String targetUserId) {
+        if (targetUserId == null) {
+            return;
+        }
+        Set<String> requestIds = getOutgoingFriendRequestIds(context);
+        requestIds.add(targetUserId);
+        String userId = getUserId(context);
+        if (sharedPreferences != null && userId != null) {
+            sharedPreferences.edit()
+                    .putStringSet(KEY_OUTGOING_REQUESTS_PREFIX + userId, requestIds)
+                    .apply();
+        }
+    }
+
+    public static void removeOutgoingFriendRequest(Context context, String targetUserId) {
+        if (targetUserId == null) {
+            return;
+        }
+        Set<String> requestIds = getOutgoingFriendRequestIds(context);
+        if (requestIds.remove(targetUserId)) {
+            String userId = getUserId(context);
+            if (sharedPreferences != null && userId != null) {
+                sharedPreferences.edit()
+                        .putStringSet(KEY_OUTGOING_REQUESTS_PREFIX + userId, requestIds)
+                        .apply();
+            }
         }
     }
 

@@ -17,6 +17,7 @@ import com.example.seminarandroidapp.api.ApiClient;
 import com.example.seminarandroidapp.api.FriendRequest;
 import com.example.seminarandroidapp.api.FriendRequestBody;
 import com.example.seminarandroidapp.api.User;
+import com.example.seminarandroidapp.util.Prefs;
 import com.google.android.material.tabs.TabLayout;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -36,6 +37,7 @@ public class SearchUsersActivity extends AppCompatActivity {
     private Call<List<User>> activeSearch;
     private Call<List<User>> friendsCall;
     private Call<List<FriendRequest>> requestsCall;
+    private Call<List<FriendRequest>> outgoingRequestsCall;
     private final Set<String> acceptedFriendIds = new HashSet<>();
     private boolean friendsLoaded;
     private UsersAdapter usersAdapter;
@@ -115,6 +117,7 @@ public class SearchUsersActivity extends AppCompatActivity {
 
         loadFriendRequests();
         loadAcceptedFriends();
+        loadOutgoingFriendRequests();
     }
 
     private void showSection(boolean requests) {
@@ -193,6 +196,7 @@ public class SearchUsersActivity extends AppCompatActivity {
                         }
                     }
                     usersAdapter.updateUsers(users);
+                    usersAdapter.setRequestedUserIds(Prefs.getOutgoingFriendRequestIds(SearchUsersActivity.this));
                     if (users.isEmpty()) {
                         showStatus("No new people found");
                     } else {
@@ -212,6 +216,45 @@ public class SearchUsersActivity extends AppCompatActivity {
                 activeSearch = null;
                 usersAdapter.updateUsers(null);
                 showStatus("Search failed. Check your connection and try again.");
+            }
+        });
+    }
+
+    private void loadOutgoingFriendRequests() {
+        if (outgoingRequestsCall != null) {
+            outgoingRequestsCall.cancel();
+        }
+        Call<List<FriendRequest>> call = ApiClient.getApiService(this).getOutgoingFriendRequests();
+        outgoingRequestsCall = call;
+        call.enqueue(new Callback<>() {
+            @Override
+            public void onResponse(@NonNull Call<List<FriendRequest>> call,
+                                   @NonNull Response<List<FriendRequest>> response) {
+                if (outgoingRequestsCall != call || call.isCanceled()) {
+                    return;
+                }
+                outgoingRequestsCall = null;
+                if (!response.isSuccessful() || response.body() == null) {
+                    return;
+                }
+
+                Set<String> outgoingUserIds = new HashSet<>();
+                for (FriendRequest request : response.body()) {
+                    if (request != null && "pending".equalsIgnoreCase(request.getStatus())
+                            && request.getRecipient() != null
+                            && request.getRecipient().getId() != null) {
+                        outgoingUserIds.add(request.getRecipient().getId());
+                    }
+                }
+                Prefs.replaceOutgoingFriendRequestIds(SearchUsersActivity.this, outgoingUserIds);
+                usersAdapter.setRequestedUserIds(outgoingUserIds);
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<List<FriendRequest>> call, @NonNull Throwable throwable) {
+                if (outgoingRequestsCall == call) {
+                    outgoingRequestsCall = null;
+                }
             }
         });
     }
@@ -239,6 +282,7 @@ public class SearchUsersActivity extends AppCompatActivity {
                 for (User friend : response.body()) {
                     if (friend != null && friend.getId() != null) {
                         acceptedFriendIds.add(friend.getId());
+                        Prefs.removeOutgoingFriendRequest(SearchUsersActivity.this, friend.getId());
                     }
                 }
                 friendsLoaded = true;
@@ -281,14 +325,24 @@ public class SearchUsersActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> response) {
                         if (response.isSuccessful()) {
+                            Prefs.addOutgoingFriendRequest(SearchUsersActivity.this, user.getId());
                             usersAdapter.markRequested(user.getId());
                             Toast.makeText(SearchUsersActivity.this, "Friend request sent.", Toast.LENGTH_SHORT).show();
                         } else {
-                            usersAdapter.setSending(user.getId(), false);
-                            String error = response.code() == 409
-                                    ? "A friendship request or friendship already exists."
-                                    : ApiClient.parseError(response);
-                            Toast.makeText(SearchUsersActivity.this, error, Toast.LENGTH_LONG).show();
+                            String error = ApiClient.parseError(response);
+                            String normalizedError = error.toLowerCase(java.util.Locale.ROOT);
+                            boolean alreadyPending = response.code() == 409
+                                    && (normalizedError.contains("pending")
+                                    || normalizedError.contains("already exists")
+                                    || normalizedError.contains("friendship_exists"));
+                            if (alreadyPending) {
+                                Prefs.addOutgoingFriendRequest(SearchUsersActivity.this, user.getId());
+                                usersAdapter.markRequested(user.getId());
+                                Toast.makeText(SearchUsersActivity.this, "Friend request is already pending.", Toast.LENGTH_SHORT).show();
+                            } else {
+                                usersAdapter.setSending(user.getId(), false);
+                                Toast.makeText(SearchUsersActivity.this, error, Toast.LENGTH_LONG).show();
+                            }
                         }
                     }
 
@@ -440,6 +494,9 @@ public class SearchUsersActivity extends AppCompatActivity {
         }
         if (friendsCall != null) {
             friendsCall.cancel();
+        }
+        if (outgoingRequestsCall != null) {
+            outgoingRequestsCall.cancel();
         }
         super.onDestroy();
     }

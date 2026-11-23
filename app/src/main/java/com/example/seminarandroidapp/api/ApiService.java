@@ -53,8 +53,14 @@ public interface ApiService {
     @POST("api/friends/requests")
     Call<ResponseBody> sendFriendRequest(@Body FriendRequestBody request);
 
-    @GET("api/friends/requests")
+    @GET("api/friends/requests/incoming")
     Call<List<FriendRequest>> getFriendRequests();
+
+    @GET("api/friends/requests/outgoing")
+    Call<List<FriendRequest>> getOutgoingFriendRequests();
+
+    @retrofit2.http.DELETE("api/friends/requests/{id}")
+    Call<ResponseBody> cancelOutgoingFriendRequest(@Path("id") String requestId);
 
     @POST("api/friends/requests/{id}/accept")
     Call<ResponseBody> acceptFriendRequest(@Path("id") String requestId);
