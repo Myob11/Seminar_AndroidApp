@@ -47,6 +47,32 @@ public interface ApiService {
     @GET("api/conversations/direct")
     Call<List<DirectConversation>> getDirectConversations();
 
+    @GET("api/users/{id}/public-key")
+    Call<PublicKeyResponse> getUserPublicKey(@Path("id") String userId);
+
+    @PUT("api/conversations/{id}/key-envelopes/{recipient_id}")
+    Call<KeyEnvelopeResponse> putKeyEnvelope(
+            @Path("id") String conversationId,
+            @Path("recipient_id") String recipientUserId,
+            @Body KeyEnvelopeRequest request
+    );
+
+    @GET("api/conversations/{id}/key-envelopes/me")
+    Call<KeyEnvelopeResponse> getMyKeyEnvelope(@Path("id") String conversationId);
+
+    @POST("api/conversations/{id}/messages")
+    Call<EncryptedMessage> sendMessage(
+            @Path("id") String conversationId,
+            @Body SendMessageRequest request
+    );
+
+    @GET("api/conversations/{id}/messages")
+    Call<MessagePage> getMessages(
+            @Path("id") String conversationId,
+            @Query("limit") int limit,
+            @Query("before") String before
+    );
+
     @POST("api/conversations/direct")
     Call<DirectConversation> createDirectConversation(@Body DirectConversationRequest request);
 
@@ -75,5 +101,5 @@ public interface ApiService {
     Call<ResponseBody> uploadPrivateKeyBackup(@Body PrivateKeyBackupRequest request);
 
     @GET("api/users/me/private-key-backup")
-    Call<ResponseBody> getPrivateKeyBackup();
+    Call<PrivateKeyBackupResponse> getPrivateKeyBackup();
 }

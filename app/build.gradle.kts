@@ -50,6 +50,7 @@ dependencies {
 
     // Security for EncryptedSharedPreferences
     implementation(libs.security.crypto)
+    implementation(libs.bcprov)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

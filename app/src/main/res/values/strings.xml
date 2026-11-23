@@ -23,4 +23,16 @@
     <string name="could_not_load_profile">Could not load your profile.</string>
     <string name="signing_out">Signing out…</string>
     <string name="network_error">Network error. Please try again.</string>
+    <string name="chat_connecting">Securing conversation…</string>
+    <string name="chat_waiting_for_key">Waiting for the other participant to secure this conversation…</string>
+    <string name="chat_message_hint">Message</string>
+    <string name="send">Send</string>
+    <string name="chat_key_restore_title">Unlock your chat key</string>
+    <string name="chat_recovery_hint">Recovery secret</string>
+    <string name="chat_restore_key">Unlock</string>
+    <string name="chat_recovery_required">Enter your recovery secret to unlock encrypted chats on this device.</string>
+    <string name="chat_key_restore_failed">Could not unlock the private key. Check your recovery secret and try again.</string>
+    <string name="chat_key_setup_failed">Could not secure this conversation. Please try again.</string>
+    <string name="chat_send_failed">Message could not be sent.</string>
+    <string name="chat_message_empty">Type a message first.</string>
 </resources>

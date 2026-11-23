@@ -326,10 +326,20 @@ public class MainActivity extends AppCompatActivity {
 
     private void onConversationSelected(Conversation conversation) {
         if (conversation.hasDirectConversation()) {
-            Toast.makeText(this, "Chat with " + conversation.getContactName(), Toast.LENGTH_SHORT).show();
+            openConversation(conversation, false);
         } else {
             createDirectConversation(conversation);
         }
+    }
+
+    private void openConversation(Conversation conversation, boolean initializeKey) {
+        Intent intent = new Intent(this, ChatActivity.class);
+        intent.putExtra(ChatActivity.EXTRA_CONVERSATION_ID, conversation.getConversationId());
+        intent.putExtra(ChatActivity.EXTRA_FRIEND_ID, conversation.getTargetUserId());
+        intent.putExtra(ChatActivity.EXTRA_FRIEND_NAME, conversation.getContactName());
+        intent.putExtra(ChatActivity.EXTRA_FRIEND_PICTURE, conversation.getProfilePicture());
+        intent.putExtra(ChatActivity.EXTRA_INITIALIZE_KEY, initializeKey);
+        startActivity(intent);
     }
 
     private void createDirectConversation(Conversation friendRow) {
@@ -354,7 +364,15 @@ public class MainActivity extends AppCompatActivity {
                             friendRow.getProfilePicture()));
                     directConversations.add(created);
                     renderMainContent();
-                    Toast.makeText(MainActivity.this, "Conversation created.", Toast.LENGTH_SHORT).show();
+                    Conversation createdRow = new Conversation(
+                            created.getId(),
+                            friendRow.getTargetUserId(),
+                            friendRow.getContactName(),
+                            "Tap to chat",
+                            ""
+                    );
+                    createdRow.setProfilePicture(friendRow.getProfilePicture());
+                    openConversation(createdRow, true);
                 } else {
                     Toast.makeText(MainActivity.this, ApiClient.parseError(response), Toast.LENGTH_LONG).show();
                 }

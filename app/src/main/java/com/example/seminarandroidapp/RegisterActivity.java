@@ -14,6 +14,7 @@ import com.example.seminarandroidapp.api.PrivateKeyBackupRequest;
 import com.example.seminarandroidapp.api.PublicKeyRequest;
 import com.example.seminarandroidapp.api.PublicKeyResponse;
 import com.example.seminarandroidapp.util.KeyUtils;
+import com.example.seminarandroidapp.util.LocalKeyStore;
 import com.example.seminarandroidapp.util.Prefs;
 import com.google.android.material.textfield.TextInputEditText;
 import okhttp3.ResponseBody;
@@ -133,6 +134,7 @@ public class RegisterActivity extends AppCompatActivity {
         try {
             pendingRecoverySecret = recoverySecret;
             pendingKeyPair = KeyUtils.generateRsaKeyPair();
+            LocalKeyStore.savePrivateKey(this, Prefs.getUserId(this), pendingKeyPair.getPrivate());
             uploadPublicKey();
         } catch (Exception e) {
             showPublicKeyUploadFailure("Could not generate your RSA key pair.");
