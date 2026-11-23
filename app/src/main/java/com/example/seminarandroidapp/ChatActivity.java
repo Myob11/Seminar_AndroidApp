@@ -28,6 +28,7 @@ import com.example.seminarandroidapp.api.KeyEnvelopeRequest;
 import com.example.seminarandroidapp.api.KeyEnvelopeResponse;
 import com.example.seminarandroidapp.api.MessagePage;
 import com.example.seminarandroidapp.api.PrivateKeyBackupResponse;
+import com.example.seminarandroidapp.api.ReadStateRequest;
 import com.example.seminarandroidapp.api.PublicKeyResponse;
 import com.example.seminarandroidapp.api.SendMessageRequest;
 import com.example.seminarandroidapp.util.KeyUtils;
@@ -44,6 +45,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Response;
 
@@ -81,6 +83,8 @@ public class ChatActivity extends AppCompatActivity {
     private int keyVersion = 1;
     private byte[] conversationKey;
     private PrivateKey privateKey;
+    private String lastMarkedReadMessageId;
+    private Call<ResponseBody> readStateCall;
 
     private TextView statusView;
     private EditText messageInput;
@@ -440,6 +444,9 @@ public class ChatActivity extends AppCompatActivity {
                                 if (nearBottom && !sorted.isEmpty()) {
                                     recyclerView.scrollToPosition(sorted.size() - 1);
                                 }
+                                if (!sorted.isEmpty()) {
+                                    markMessagesReadThrough(sorted.get(sorted.size() - 1).getId());
+                                }
                                 setStatus(0);
                             }
                         });
@@ -468,6 +475,35 @@ public class ChatActivity extends AppCompatActivity {
             } finally {
                 activePollCall = null;
                 polling = false;
+            }
+        });
+    }
+
+    private void markMessagesReadThrough(String messageId) {
+        if (messageId == null || messageId.isEmpty()
+                || messageId.equals(lastMarkedReadMessageId) || readStateCall != null) {
+            return;
+        }
+
+        Call<ResponseBody> call = ApiClient.getApiService(this)
+                .updateConversationReadState(conversationId, new ReadStateRequest(messageId));
+        readStateCall = call;
+        call.enqueue(new retrofit2.Callback<>() {
+            @Override
+            public void onResponse(@NonNull Call<ResponseBody> call,
+                                   @NonNull Response<ResponseBody> response) {
+                if (readStateCall != call) return;
+                readStateCall = null;
+                if (response.isSuccessful()) {
+                    lastMarkedReadMessageId = messageId;
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t) {
+                if (readStateCall == call) {
+                    readStateCall = null;
+                }
             }
         });
     }
@@ -537,12 +573,17 @@ public class ChatActivity extends AppCompatActivity {
         handler.removeCallbacks(pollRunnable);
         Call<?> pollCall = activePollCall;
         if (pollCall != null) pollCall.cancel();
+        if (readStateCall != null) {
+            readStateCall.cancel();
+            readStateCall = null;
+        }
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
         handler.removeCallbacksAndMessages(null);
+        if (readStateCall != null) readStateCall.cancel();
         cryptoExecutor.shutdownNow();
         super.onDestroy();
     }

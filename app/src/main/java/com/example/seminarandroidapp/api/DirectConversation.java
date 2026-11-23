@@ -13,6 +13,10 @@ public class DirectConversation {
     @SerializedName("recipient_id")
     private String recipientId;
     private List<User> participants;
+    @SerializedName("last_message")
+    private EncryptedMessage lastMessage;
+    @SerializedName("unread_count")
+    private int unreadCount;
 
     public DirectConversation() {
     }
@@ -54,6 +58,14 @@ public class DirectConversation {
 
     public List<User> getParticipants() {
         return participants;
+    }
+
+    public EncryptedMessage getLastMessage() {
+        return lastMessage;
+    }
+
+    public int getUnreadCount() {
+        return unreadCount;
     }
 
     public User getOtherParticipant(String currentUserId) {

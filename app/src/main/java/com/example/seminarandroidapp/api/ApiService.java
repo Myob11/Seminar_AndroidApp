@@ -66,6 +66,12 @@ public interface ApiService {
             @Body SendMessageRequest request
     );
 
+    @retrofit2.http.PUT("api/conversations/{id}/read-state")
+    Call<ResponseBody> updateConversationReadState(
+            @Path("id") String conversationId,
+            @Body ReadStateRequest request
+    );
+
     @GET("api/conversations/{id}/messages")
     Call<MessagePage> getMessages(
             @Path("id") String conversationId,

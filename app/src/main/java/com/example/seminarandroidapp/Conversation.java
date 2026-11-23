@@ -7,6 +7,7 @@ public class Conversation {
     private String lastMessage;
     private String time;
     private String profilePicture;
+    private int unreadCount;
 
     public Conversation() {
     }
@@ -73,5 +74,13 @@ public class Conversation {
 
     public void setTime(String time) {
         this.time = time;
+    }
+
+    public int getUnreadCount() {
+        return unreadCount;
+    }
+
+    public void setUnreadCount(int unreadCount) {
+        this.unreadCount = Math.max(0, unreadCount);
     }
 }

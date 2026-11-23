@@ -2,7 +2,6 @@ package com.example.seminarandroidapp;
 
 import android.content.Context;
 import android.graphics.Typeface;
-import android.util.Base64;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,9 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-import com.example.seminarandroidapp.util.Prefs;
 import com.example.seminarandroidapp.util.ProfileUtils;
-import com.example.seminarandroidapp.util.SignalManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -57,6 +54,24 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         notifyDataSetChanged();
     }
 
+    public void updateConversationPreview(String conversationId, String preview, String time) {
+        updatePreviewInList(conversations, conversationId, preview, time);
+        updatePreviewInList(searchCandidates, conversationId, preview, time);
+        updatePreviewInList(friendSuggestions, conversationId, preview, time);
+        updatePreviewInList(filteredList, conversationId, preview, time);
+        notifyDataSetChanged();
+    }
+
+    private void updatePreviewInList(List<Conversation> list, String conversationId,
+                                     String preview, String time) {
+        for (Conversation conversation : list) {
+            if (conversationId.equals(conversation.getConversationId())) {
+                conversation.setLastMessage(preview);
+                conversation.setTime(time);
+            }
+        }
+    }
+
     public void setSearchFocused(boolean focused) {
         searchFocused = focused;
     }
@@ -94,25 +109,20 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         
         holder.name.setText(conversation.getContactName());
         
-        String lastMsg = conversation.getLastMessage();
-        String targetUserId = conversation.getTargetUserId();
-        String secretB64 = (targetUserId != null) ? Prefs.getSharedSecret(targetUserId) : null;
-
-        if (conversation.hasDirectConversation() && secretB64 != null && lastMsg != null && !lastMsg.isEmpty() &&
-            !lastMsg.equals("No messages yet") && !lastMsg.equals("Tap to chat")) {
-            try {
-                byte[] secret = Base64.decode(secretB64, Base64.NO_WRAP);
-                lastMsg = SignalManager.decrypt(lastMsg, secret);
-            } catch (Exception e) {
-                lastMsg = "[Encrypted Message]";
-            }
-        }
-        holder.lastMessage.setText(lastMsg);
+        holder.lastMessage.setText(conversation.getLastMessage());
 
         holder.time.setText(conversation.getTime());
         
-        holder.name.setTypeface(null, Typeface.NORMAL);
-        holder.lastMessage.setTypeface(null, Typeface.NORMAL);
+        boolean unread = conversation.getUnreadCount() > 0;
+        holder.name.setTypeface(null, unread ? Typeface.BOLD : Typeface.NORMAL);
+        holder.lastMessage.setTypeface(null, unread ? Typeface.BOLD : Typeface.NORMAL);
+        if (unread) {
+            holder.unreadCount.setText(conversation.getUnreadCount() > 99
+                    ? "99+" : String.valueOf(conversation.getUnreadCount()));
+            holder.unreadCount.setVisibility(View.VISIBLE);
+        } else {
+            holder.unreadCount.setVisibility(View.GONE);
+        }
         
         TypedValue typedValue = new TypedValue();
         context.getTheme().resolveAttribute(android.R.attr.textColorSecondary, typedValue, true);
@@ -143,7 +153,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView profileImage;
-        TextView name, lastMessage, time;
+        TextView name, lastMessage, time, unreadCount;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -151,6 +161,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
             name = itemView.findViewById(R.id.textViewName);
             lastMessage = itemView.findViewById(R.id.textViewLastMessage);
             time = itemView.findViewById(R.id.textViewTime);
+            unreadCount = itemView.findViewById(R.id.textViewUnreadCount);
         }
     }
 }

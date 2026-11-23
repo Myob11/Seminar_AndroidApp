@@ -26,19 +26,31 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.seminarandroidapp.api.ApiClient;
 import com.example.seminarandroidapp.api.DirectConversation;
 import com.example.seminarandroidapp.api.DirectConversationRequest;
+import com.example.seminarandroidapp.api.EncryptedMessage;
 import com.example.seminarandroidapp.api.FriendRequest;
+import com.example.seminarandroidapp.api.KeyEnvelopeResponse;
 import com.example.seminarandroidapp.api.User;
+import com.example.seminarandroidapp.util.KeyUtils;
+import com.example.seminarandroidapp.util.LocalKeyStore;
 import com.example.seminarandroidapp.util.Prefs;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import java.security.PrivateKey;
 import java.text.Collator;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -69,6 +81,9 @@ public class MainActivity extends AppCompatActivity {
     private Call<List<User>> friendsCall;
     private Call<List<DirectConversation>> conversationsCall;
     private Call<DirectConversation> createConversationCall;
+    private final Map<String, Call<?>> previewCalls = new HashMap<>();
+    private final Map<String, ConversationPreview> previewCache = new HashMap<>();
+    private final ExecutorService previewExecutor = Executors.newFixedThreadPool(3);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -177,6 +192,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         refreshHandler.removeCallbacks(periodicRefresh);
+        for (Call<?> call : previewCalls.values()) {
+            call.cancel();
+        }
+        previewCalls.clear();
         super.onPause();
     }
 
@@ -258,6 +277,7 @@ public class MainActivity extends AppCompatActivity {
         List<Conversation> rows = new ArrayList<>();
         List<Conversation> searchableRows = new ArrayList<>();
         List<Conversation> friendSuggestions = new ArrayList<>();
+        Map<String, EncryptedMessage> latestMessagesByConversation = new HashMap<>();
         Set<String> usersWithConversations = new HashSet<>();
         String currentUserId = Prefs.getUserId(this);
 
@@ -278,14 +298,25 @@ public class MainActivity extends AppCompatActivity {
             if (latestFriend != null) {
                 friend = latestFriend;
             }
+            EncryptedMessage latestMessage = directConversation.getLastMessage();
+            ConversationPreview cachedPreview = previewCache.get(directConversation.getId());
+            boolean hasCurrentPreview = latestMessage != null && cachedPreview != null
+                    && latestMessage.getId() != null
+                    && latestMessage.getId().equals(cachedPreview.messageId);
+            String previewText = latestMessage == null ? "No messages yet"
+                    : hasCurrentPreview ? cachedPreview.text : "Encrypted message";
+            String previewTime = latestMessage == null ? ""
+                    : hasCurrentPreview ? cachedPreview.time : formatPreviewTime(latestMessage.getCreatedAt());
             Conversation row = new Conversation(
                     directConversation.getId(),
                     friend.getId(),
                     friend.getUsername(),
-                    "Tap to chat",
-                    ""
+                    previewText,
+                    previewTime
             );
             row.setProfilePicture(friend.getProfilePicture());
+            row.setUnreadCount(directConversation.getUnreadCount());
+            latestMessagesByConversation.put(directConversation.getId(), latestMessage);
             rows.add(row);
             searchableRows.add(row);
         }
@@ -313,6 +344,152 @@ public class MainActivity extends AppCompatActivity {
         friendSuggestions.sort((left, right) -> collator.compare(left.getContactName(), right.getContactName()));
         adapter.updateData(rows, searchableRows, friendSuggestions);
         adapter.filter(currentSearchQuery);
+        for (Conversation row : rows) {
+            loadConversationPreview(row.getConversationId(),
+                    latestMessagesByConversation.get(row.getConversationId()));
+        }
+    }
+
+    private void loadConversationPreview(String conversationId, EncryptedMessage latestMessage) {
+        if (conversationId == null || latestMessage == null) {
+            return;
+        }
+        ConversationPreview cached = previewCache.get(conversationId);
+        if (cached != null && latestMessage.getId().equals(cached.messageId)) {
+            return;
+        }
+        if (previewCalls.containsKey(conversationId)) {
+            return;
+        }
+
+        byte[] conversationKey = null;
+        PrivateKey privateKey = null;
+        try {
+            conversationKey = LocalKeyStore.loadConversationKey(this, Prefs.getUserId(this), conversationId);
+            if (conversationKey == null) {
+                privateKey = LocalKeyStore.loadPrivateKey(this, Prefs.getUserId(this));
+            }
+        } catch (Exception ignored) {
+            // Display a safe encrypted preview if this device cannot access the local key.
+        }
+
+        if (conversationKey != null) {
+            decryptLatestPreview(conversationId, latestMessage, conversationKey);
+            return;
+        }
+        if (privateKey == null) {
+            setConversationPreview(conversationId, latestMessage, "Encrypted message");
+            return;
+        }
+
+        Call<KeyEnvelopeResponse> envelopeCall = ApiClient.getApiService(this)
+                .getMyKeyEnvelope(conversationId);
+        previewCalls.put(conversationId, envelopeCall);
+        PrivateKey localPrivateKey = privateKey;
+        envelopeCall.enqueue(new Callback<>() {
+            @Override
+            public void onResponse(@NonNull Call<KeyEnvelopeResponse> call,
+                                   @NonNull Response<KeyEnvelopeResponse> response) {
+                if (previewCalls.get(conversationId) != call || call.isCanceled()) return;
+                if (!response.isSuccessful() || response.body() == null) {
+                    previewCalls.remove(conversationId);
+                    setConversationPreview(conversationId, latestMessage, "Encrypted message");
+                    return;
+                }
+
+                KeyEnvelopeResponse envelope = response.body();
+                previewExecutor.execute(() -> {
+                    byte[] key = null;
+                    try {
+                        key = KeyUtils.unwrapConversationKey(envelope.getEncryptedConversationKey(), localPrivateKey);
+                        LocalKeyStore.saveConversationKey(getApplicationContext(),
+                                Prefs.getUserId(MainActivity.this), conversationId, key);
+                    } catch (Exception ignored) {
+                        // Keep encrypted content hidden if the key cannot be restored.
+                    }
+                    byte[] resolvedKey = key;
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && previewCalls.get(conversationId) == call) {
+                            previewCalls.remove(conversationId);
+                            if (resolvedKey != null) {
+                                decryptLatestPreview(conversationId, latestMessage, resolvedKey);
+                            } else {
+                                setConversationPreview(conversationId, latestMessage, "Encrypted message");
+                            }
+                        }
+                    });
+                });
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<KeyEnvelopeResponse> call, @NonNull Throwable t) {
+                if (previewCalls.get(conversationId) == call) {
+                    previewCalls.remove(conversationId);
+                }
+            }
+        });
+    }
+
+    private void decryptLatestPreview(String conversationId, EncryptedMessage latestMessage, byte[] key) {
+        previewExecutor.execute(() -> {
+            String text = "Encrypted message";
+            try {
+                text = KeyUtils.decryptMessage(latestMessage.getCiphertext(), latestMessage.getNonce(),
+                        latestMessage.getAuthTag(), key);
+            } catch (Exception ignored) {
+                // Keep ciphertext out of the conversation list.
+            }
+            String previewText = text;
+            runOnUiThread(() -> {
+                if (!isFinishing()) {
+                    setConversationPreview(conversationId, latestMessage, previewText);
+                }
+            });
+        });
+    }
+
+    private void setConversationPreview(String conversationId, EncryptedMessage latestMessage, String text) {
+        if (!isCurrentLatestMessage(conversationId, latestMessage.getId())) {
+            return;
+        }
+        ConversationPreview loaded = new ConversationPreview(
+                latestMessage.getId(), text, formatPreviewTime(latestMessage.getCreatedAt()));
+        previewCache.put(conversationId, loaded);
+        if (!isFinishing() && !isDestroyed() && adapter != null) {
+            adapter.updateConversationPreview(conversationId, loaded.text, loaded.time);
+        }
+    }
+
+    private boolean isCurrentLatestMessage(String conversationId, String messageId) {
+        for (DirectConversation conversation : directConversations) {
+            if (conversation != null && conversationId.equals(conversation.getId())) {
+                EncryptedMessage latest = conversation.getLastMessage();
+                return latest != null && messageId != null && messageId.equals(latest.getId());
+            }
+        }
+        return false;
+    }
+
+    private String formatPreviewTime(String timestamp) {
+        if (timestamp == null || timestamp.isEmpty()) return "";
+        try {
+            Date date = Date.from(Instant.parse(timestamp));
+            return new SimpleDateFormat("HH:mm", Locale.getDefault()).format(date);
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private static final class ConversationPreview {
+        final String messageId;
+        final String text;
+        final String time;
+
+        ConversationPreview(String messageId, String text, String time) {
+            this.messageId = messageId;
+            this.text = text;
+            this.time = time;
+        }
     }
 
     private User findFriend(String userId) {
@@ -489,6 +666,11 @@ public class MainActivity extends AppCompatActivity {
         if (createConversationCall != null) {
             createConversationCall.cancel();
         }
+        for (Call<?> call : previewCalls.values()) {
+            call.cancel();
+        }
+        previewCalls.clear();
+        previewExecutor.shutdownNow();
         super.onDestroy();
     }
 

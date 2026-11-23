@@ -40,7 +40,7 @@
         android:textColor="?android:attr/textColorSecondary"
         android:maxLines="1"
         android:ellipsize="end"
-        app:layout_constraintEnd_toStartOf="@+id/textViewTime"
+        app:layout_constraintEnd_toStartOf="@id/textViewUnreadCount"
         app:layout_constraintStart_toEndOf="@id/imageViewProfile"
         app:layout_constraintTop_toBottomOf="@id/textViewName" />
 
@@ -53,5 +53,23 @@
         android:textColor="?android:attr/textColorSecondary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/textViewUnreadCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_unread_badge"
+        android:minWidth="20dp"
+        android:gravity="center"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
+        android:textColor="@color/white"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/textViewLastMessage" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
