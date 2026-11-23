@@ -39,6 +39,7 @@ public class SearchUsersActivity extends AppCompatActivity {
     private Call<List<FriendRequest>> requestsCall;
     private Call<List<FriendRequest>> outgoingRequestsCall;
     private final Set<String> acceptedFriendIds = new HashSet<>();
+    private final Set<String> incomingRequestUserIds = new HashSet<>();
     private boolean friendsLoaded;
     private UsersAdapter usersAdapter;
     private FriendRequestsAdapter requestsAdapter;
@@ -197,6 +198,7 @@ public class SearchUsersActivity extends AppCompatActivity {
                     }
                     usersAdapter.updateUsers(users);
                     usersAdapter.setRequestedUserIds(Prefs.getOutgoingFriendRequestIds(SearchUsersActivity.this));
+                    usersAdapter.setIncomingRequestUserIds(incomingRequestUserIds);
                     if (users.isEmpty()) {
                         showStatus("No new people found");
                     } else {
@@ -377,12 +379,17 @@ public class SearchUsersActivity extends AppCompatActivity {
                 requestsCall = null;
                 if (response.isSuccessful() && response.body() != null) {
                     List<FriendRequest> pending = new ArrayList<>();
+                    incomingRequestUserIds.clear();
                     for (FriendRequest request : response.body()) {
                         if (request != null && "pending".equalsIgnoreCase(request.getStatus())) {
                             pending.add(request);
+                            if (request.getRequester() != null && request.getRequester().getId() != null) {
+                                incomingRequestUserIds.add(request.getRequester().getId());
+                            }
                         }
                     }
                     requestsAdapter.setRequests(pending);
+                    usersAdapter.setIncomingRequestUserIds(incomingRequestUserIds);
                     requestsLoaded = true;
                     updateRequestsTabTitle();
                     if (showingRequests) {
@@ -424,9 +431,14 @@ public class SearchUsersActivity extends AppCompatActivity {
             @Override
             public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> response) {
                 if (response.isSuccessful()) {
-                    if (accept && request.getRequester() != null && request.getRequester().getId() != null) {
-                        acceptedFriendIds.add(request.getRequester().getId());
-                        friendsLoaded = true;
+                    if (request.getRequester() != null && request.getRequester().getId() != null) {
+                        String requesterId = request.getRequester().getId();
+                        incomingRequestUserIds.remove(requesterId);
+                        if (accept) {
+                            acceptedFriendIds.add(requesterId);
+                            friendsLoaded = true;
+                        }
+                        usersAdapter.setIncomingRequestUserIds(incomingRequestUserIds);
                     }
                     requestsAdapter.removeRequest(request.getId());
                     updateRequestsTabTitle();

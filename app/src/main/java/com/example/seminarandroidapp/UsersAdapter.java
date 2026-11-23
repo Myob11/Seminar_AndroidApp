@@ -20,6 +20,7 @@ public class UsersAdapter extends RecyclerView.Adapter<UsersAdapter.ViewHolder> 
     private final List<User> users = new ArrayList<>();
     private final Set<String> sendingUserIds = new HashSet<>();
     private final Set<String> requestedUserIds = new HashSet<>();
+    private final Set<String> incomingRequestUserIds = new HashSet<>();
     private final OnUserClickListener listener;
 
     public interface OnUserClickListener {
@@ -61,6 +62,14 @@ public class UsersAdapter extends RecyclerView.Adapter<UsersAdapter.ViewHolder> 
         notifyDataSetChanged();
     }
 
+    public void setIncomingRequestUserIds(Set<String> userIds) {
+        incomingRequestUserIds.clear();
+        if (userIds != null) {
+            incomingRequestUserIds.addAll(userIds);
+        }
+        notifyDataSetChanged();
+    }
+
     private void notifyUser(String userId) {
         for (int i = 0; i < users.size(); i++) {
             if (userId != null && userId.equals(users.get(i).getId())) {
@@ -84,10 +93,12 @@ public class UsersAdapter extends RecyclerView.Adapter<UsersAdapter.ViewHolder> 
         holder.userName.setText(user.getUsername());
         ProfileUtils.loadProfilePicture(holder.itemView.getContext(), user, holder.userAvatar);
 
+        boolean requestReceived = userId != null && incomingRequestUserIds.contains(userId);
         boolean requested = userId != null && requestedUserIds.contains(userId);
         boolean sending = userId != null && sendingUserIds.contains(userId);
-        holder.btnAddFriend.setText(requested ? "Requested" : sending ? "Sending…" : "Add");
-        holder.btnAddFriend.setEnabled(userId != null && !requested && !sending);
+        holder.btnAddFriend.setText(requestReceived ? "Request received"
+                : requested ? "Requested" : sending ? "Sending…" : "Add");
+        holder.btnAddFriend.setEnabled(userId != null && !requestReceived && !requested && !sending);
         holder.btnAddFriend.setOnClickListener(v -> listener.onAddFriendClick(user));
     }
 
