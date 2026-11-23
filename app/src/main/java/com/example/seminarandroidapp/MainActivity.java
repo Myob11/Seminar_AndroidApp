@@ -86,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             String username = Prefs.getUsername(this);
-            getSupportActionBar().setTitle(username != null ? "Chats (" + username + ")" : "Seminar App");
+            getSupportActionBar().setTitle(username != null ? username : "");
         }
 
         searchView = findViewById(R.id.searchView);
