@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -90,7 +91,9 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_chat);
+        applyComposerInsets(findViewById(R.id.chatComposer));
 
         conversationId = getIntent().getStringExtra(EXTRA_CONVERSATION_ID);
         friendId = getIntent().getStringExtra(EXTRA_FRIEND_ID);
@@ -148,6 +151,22 @@ public class ChatActivity extends AppCompatActivity {
             return insets;
         });
         ViewCompat.requestApplyInsets(toolbar);
+    }
+
+    private void applyComposerInsets(View composer) {
+        int baseLeft = composer.getPaddingLeft();
+        int baseTop = composer.getPaddingTop();
+        int baseRight = composer.getPaddingRight();
+        int baseBottom = composer.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(composer, (view, insets) -> {
+            Insets navigationBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            int bottomInset = Math.max(navigationBars.bottom, ime.bottom);
+            view.setPadding(baseLeft, baseTop, baseRight, baseBottom + bottomInset);
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(composer);
     }
 
     private void startKeySetupOrPolling() {
