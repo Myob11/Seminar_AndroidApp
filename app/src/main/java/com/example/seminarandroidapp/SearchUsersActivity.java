@@ -18,6 +18,8 @@ import com.example.seminarandroidapp.api.FriendRequest;
 import com.example.seminarandroidapp.api.FriendRequestBody;
 import com.example.seminarandroidapp.api.User;
 import com.example.seminarandroidapp.util.Prefs;
+import com.example.seminarandroidapp.util.RealtimeSocketManager;
+import org.json.JSONObject;
 import com.google.android.material.tabs.TabLayout;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -50,6 +52,23 @@ public class SearchUsersActivity extends AppCompatActivity {
     private String currentQuery = "";
     private boolean showingRequests;
     private boolean requestsLoaded;
+
+    private final RealtimeSocketManager.Listener realtimeListener = new RealtimeSocketManager.Listener() {
+        @Override
+        public void onRealtimeEvent(JSONObject event) {
+            String type = event.optString("type");
+            if ("friend_request_received".equals(type)) {
+                refreshRealtimeState(false);
+            } else if ("friend_request_accepted".equals(type)) {
+                refreshRealtimeState(true);
+            }
+        }
+
+        @Override
+        public void onRealtimeConnected() {
+            refreshRealtimeState(true);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,6 +138,42 @@ public class SearchUsersActivity extends AppCompatActivity {
         loadFriendRequests();
         loadAcceptedFriends();
         loadOutgoingFriendRequests();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        RealtimeSocketManager.getInstance().addListener(realtimeListener);
+    }
+
+    @Override
+    protected void onStop() {
+        RealtimeSocketManager.getInstance().removeListener(realtimeListener);
+        super.onStop();
+    }
+
+    private void refreshRealtimeState(boolean refreshFriends) {
+        if (requestsCall != null) {
+            requestsCall.cancel();
+            requestsCall = null;
+        }
+        requestsLoaded = false;
+        loadFriendRequests();
+
+        if (outgoingRequestsCall != null) {
+            outgoingRequestsCall.cancel();
+            outgoingRequestsCall = null;
+        }
+        loadOutgoingFriendRequests();
+
+        if (refreshFriends) {
+            if (friendsCall != null) {
+                friendsCall.cancel();
+                friendsCall = null;
+            }
+            friendsLoaded = false;
+            loadAcceptedFriends();
+        }
     }
 
     private void showSection(boolean requests) {

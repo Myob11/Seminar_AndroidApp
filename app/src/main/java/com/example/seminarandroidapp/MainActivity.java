@@ -33,6 +33,8 @@ import com.example.seminarandroidapp.api.User;
 import com.example.seminarandroidapp.util.KeyUtils;
 import com.example.seminarandroidapp.util.LocalKeyStore;
 import com.example.seminarandroidapp.util.Prefs;
+import com.example.seminarandroidapp.util.RealtimeSocketManager;
+import org.json.JSONObject;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -59,8 +61,10 @@ public class MainActivity extends AppCompatActivity {
     private final Runnable periodicRefresh = new Runnable() {
         @Override
         public void run() {
-            refreshMainContent();
-            refreshFriendRequestCount();
+            if (!RealtimeSocketManager.getInstance().isConnected()) {
+                refreshMainContent();
+                refreshFriendRequestCount();
+            }
             refreshHandler.postDelayed(this, REFRESH_INTERVAL_MILLIS);
         }
     };
@@ -71,6 +75,29 @@ public class MainActivity extends AppCompatActivity {
     private TextView friendRequestBadge;
     private int incomingRequestCount;
     private String currentSearchQuery = "";
+    private boolean mainContentRefreshPending;
+    private boolean friendRequestRefreshPending;
+
+    private final RealtimeSocketManager.Listener realtimeListener = new RealtimeSocketManager.Listener() {
+        @Override
+        public void onRealtimeEvent(JSONObject event) {
+            String type = event.optString("type");
+            if ("message_received".equals(type)) {
+                refreshMainContent();
+            } else if ("friend_request_received".equals(type)) {
+                refreshFriendRequestCount();
+            } else if ("friend_request_accepted".equals(type)) {
+                refreshFriendRequestCount();
+                refreshMainContent();
+            }
+        }
+
+        @Override
+        public void onRealtimeConnected() {
+            refreshMainContent();
+            refreshFriendRequestCount();
+        }
+    };
 
     private List<User> friends = new ArrayList<>();
     private List<DirectConversation> directConversations = new ArrayList<>();
@@ -181,6 +208,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        RealtimeSocketManager.getInstance().addListener(realtimeListener);
+    }
+
+    @Override
+    protected void onStop() {
+        RealtimeSocketManager.getInstance().removeListener(realtimeListener);
+        super.onStop();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         refreshMainContent();
@@ -201,8 +240,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshMainContent() {
         if (friendsCall != null || conversationsCall != null) {
+            mainContentRefreshPending = true;
             return;
         }
+        mainContentRefreshPending = false;
         friendsLoaded = false;
         conversationsLoaded = false;
 
@@ -220,6 +261,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 friendsLoaded = true;
                 renderMainContent();
+                refreshMainContentIfPending();
             }
 
             @Override
@@ -232,6 +274,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 friendsLoaded = true;
                 renderMainContent();
+                refreshMainContentIfPending();
                 Toast.makeText(MainActivity.this, "Could not load friends.", Toast.LENGTH_SHORT).show();
             }
         });
@@ -252,6 +295,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 conversationsLoaded = true;
                 renderMainContent();
+                refreshMainContentIfPending();
             }
 
             @Override
@@ -264,9 +308,17 @@ public class MainActivity extends AppCompatActivity {
                 }
                 conversationsLoaded = true;
                 renderMainContent();
+                refreshMainContentIfPending();
                 Toast.makeText(MainActivity.this, "Could not load conversations.", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void refreshMainContentIfPending() {
+        if (mainContentRefreshPending && friendsCall == null && conversationsCall == null) {
+            mainContentRefreshPending = false;
+            refreshMainContent();
+        }
     }
 
     private void renderMainContent() {
@@ -590,8 +642,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshFriendRequestCount() {
         if (friendRequestsCall != null) {
+            friendRequestRefreshPending = true;
             return;
         }
+        friendRequestRefreshPending = false;
         Call<List<FriendRequest>> call = ApiClient.getApiService(this).getFriendRequests();
         friendRequestsCall = call;
         call.enqueue(new Callback<>() {
@@ -612,12 +666,20 @@ public class MainActivity extends AppCompatActivity {
                     incomingRequestCount = count;
                     updateFriendRequestBadge();
                 }
+                if (friendRequestRefreshPending) {
+                    friendRequestRefreshPending = false;
+                    refreshFriendRequestCount();
+                }
             }
 
             @Override
             public void onFailure(@NonNull Call<List<FriendRequest>> call, @NonNull Throwable t) {
                 if (friendRequestsCall == call) {
                     friendRequestsCall = null;
+                }
+                if (friendRequestRefreshPending) {
+                    friendRequestRefreshPending = false;
+                    refreshFriendRequestCount();
                 }
             }
         });
@@ -690,6 +752,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void completeLogout() {
         Prefs.clearAuth(this);
+        RealtimeSocketManager.getInstance().onAuthStateChanged(this);
         Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show();
         navigateToLogin();
     }

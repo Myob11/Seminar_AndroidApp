@@ -34,6 +34,8 @@ import com.example.seminarandroidapp.api.SendMessageRequest;
 import com.example.seminarandroidapp.util.KeyUtils;
 import com.example.seminarandroidapp.util.LocalKeyStore;
 import com.example.seminarandroidapp.util.Prefs;
+import com.example.seminarandroidapp.util.RealtimeSocketManager;
+import org.json.JSONObject;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -65,7 +67,8 @@ public class ChatActivity extends AppCompatActivity {
     private volatile Call<?> activePollCall;
     private final Runnable pollRunnable = new Runnable() {
         @Override public void run() {
-            if (isResumed && !polling) {
+            if (isResumed && !polling
+                    && (!RealtimeSocketManager.getInstance().isConnected() || conversationKey == null)) {
                 pollConversation();
             }
             if (isResumed) handler.postDelayed(this, POLL_INTERVAL_MS);
@@ -78,8 +81,25 @@ public class ChatActivity extends AppCompatActivity {
     private boolean initializeKey;
     private volatile boolean isResumed;
     private volatile boolean polling;
+    private volatile boolean refreshPending;
     private boolean sending;
     private boolean keySetupRunning;
+
+    private final RealtimeSocketManager.Listener realtimeListener = new RealtimeSocketManager.Listener() {
+        @Override
+        public void onRealtimeEvent(JSONObject event) {
+            if ("message_received".equals(event.optString("type"))
+                    && conversationId != null
+                    && conversationId.equals(event.optString("conversationId"))) {
+                beginPolling();
+            }
+        }
+
+        @Override
+        public void onRealtimeConnected() {
+            beginPolling();
+        }
+    };
     private int keyVersion = 1;
     private byte[] conversationKey;
     private PrivateKey privateKey;
@@ -376,8 +396,20 @@ public class ChatActivity extends AppCompatActivity {
     private void beginPolling() {
         if (isResumed) {
             handler.removeCallbacks(pollRunnable);
-            pollRunnable.run();
+            requestConversationRefresh();
+            handler.postDelayed(pollRunnable, POLL_INTERVAL_MS);
         }
+    }
+
+    private void requestConversationRefresh() {
+        if (!isResumed) {
+            return;
+        }
+        if (polling) {
+            refreshPending = true;
+            return;
+        }
+        pollConversation();
     }
 
     private void pollConversation() {
@@ -475,6 +507,12 @@ public class ChatActivity extends AppCompatActivity {
             } finally {
                 activePollCall = null;
                 polling = false;
+                if (refreshPending) {
+                    refreshPending = false;
+                    if (isResumed) {
+                        handler.post(ChatActivity.this::pollConversation);
+                    }
+                }
             }
         });
     }
@@ -553,6 +591,18 @@ public class ChatActivity extends AppCompatActivity {
             statusView.setText(resourceId);
             statusView.setVisibility(View.VISIBLE);
         }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        RealtimeSocketManager.getInstance().addListener(realtimeListener);
+    }
+
+    @Override
+    protected void onStop() {
+        RealtimeSocketManager.getInstance().removeListener(realtimeListener);
+        super.onStop();
     }
 
     @Override

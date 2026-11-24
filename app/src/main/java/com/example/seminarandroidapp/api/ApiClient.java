@@ -17,6 +17,7 @@ public class ApiClient {
 
     private static final String BASE_URL = "https://backend.kbnet.si/";
     private static Retrofit retrofit = null;
+    private static OkHttpClient okHttpClient;
 
     public static Retrofit getClient(Context context) {
         if (retrofit == null) {
@@ -35,7 +36,7 @@ public class ApiClient {
                 return chain.proceed(builder.build());
             };
 
-            OkHttpClient okHttpClient = new OkHttpClient.Builder()
+            okHttpClient = new OkHttpClient.Builder()
                     .connectTimeout(10, TimeUnit.SECONDS)
                     .readTimeout(10, TimeUnit.SECONDS)
                     .addInterceptor(authInterceptor)
@@ -53,6 +54,16 @@ public class ApiClient {
 
     public static ApiService getApiService(Context context) {
         return getClient(context).create(ApiService.class);
+    }
+
+    public static OkHttpClient getOkHttpClient(Context context) {
+        getClient(context);
+        return okHttpClient;
+    }
+
+    public static String getWebSocketUrl() {
+        return BASE_URL.replaceFirst("^https://", "wss://")
+                .replaceFirst("^http://", "ws://") + "ws";
     }
 
     public static String parseError(Response<?> response) {
