@@ -4,7 +4,7 @@
     <string name="Theme">Theme</string>
     <string name="Light">light</string>
     <string name="dark">Dark</string>
-    <string name="switch_account">Switch Account</string>
+    <string name="log_out">Log out</string>
     <string name="image_avatar">imageAvatar</string>
     <string name="upload_avatar">Upload Avatar</string>
     <string name="online_indicator">Online Indicator</string>
@@ -23,6 +23,7 @@
     <string name="could_not_load_profile">Could not load your profile.</string>
     <string name="signing_out">Signing out…</string>
     <string name="network_error">Network error. Please try again.</string>
+    <string name="token_revoked">Token revoked. Please log in again.</string>
     <string name="chat_connecting">Securing conversation…</string>
     <string name="chat_waiting_for_key">Waiting for the other participant to secure this conversation…</string>
     <string name="chat_message_hint">Message</string>

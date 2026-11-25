@@ -1,6 +1,8 @@
 package com.example.seminarandroidapp.api;
 
 import android.content.Context;
+import android.util.Log;
+import com.example.seminarandroidapp.MyApplication;
 import com.example.seminarandroidapp.util.Prefs;
 import com.google.gson.Gson;
 import okhttp3.Interceptor;
@@ -33,7 +35,30 @@ public class ApiClient {
                     builder.header("Authorization", "Bearer " + token);
                 }
 
-                return chain.proceed(builder.build());
+                Request authenticatedRequest = builder.build();
+                okhttp3.Response response = chain.proceed(authenticatedRequest);
+                if (token != null && (response.code() == 401 || response.code() == 403)) {
+                    String errorCode = null;
+                    try {
+                        ErrorResponse error = new Gson().fromJson(
+                                response.peekBody(64 * 1024L).string(), ErrorResponse.class);
+                        if (error != null && error.getError() != null) {
+                            errorCode = error.getError().getCode();
+                        }
+                    } catch (Exception ignored) {
+                        // Some responses may not have a JSON error body.
+                    }
+
+                    boolean revokedCode = "TOKEN_REVOKED".equalsIgnoreCase(errorCode);
+                    boolean unauthorizedProtectedRequest = response.code() == 401
+                            && isProtectedRequest(authenticatedRequest);
+                    if (revokedCode || unauthorizedProtectedRequest) {
+                        Log.w("ApiClient", "Authentication rejected: HTTP "
+                                + response.code() + ", error code=" + errorCode);
+                        MyApplication.handleTokenRevoked(context, token);
+                    }
+                }
+                return response;
             };
 
             okHttpClient = new OkHttpClient.Builder()
@@ -50,6 +75,13 @@ public class ApiClient {
                     .build();
         }
         return retrofit;
+    }
+
+    private static boolean isProtectedRequest(Request request) {
+        String path = request.url().encodedPath();
+        return !path.equals("/api/auth/login")
+                && !path.equals("/api/auth/register")
+                && !path.equals("/api/health");
     }
 
     public static ApiService getApiService(Context context) {

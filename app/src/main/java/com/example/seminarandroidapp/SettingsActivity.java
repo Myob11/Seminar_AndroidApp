@@ -83,8 +83,8 @@ public class SettingsActivity extends AppCompatActivity {
             );
         });
 
-        Button switchAccountButton = findViewById(R.id.buttonSwitchAccount);
-        switchAccountButton.setOnClickListener(view -> switchAccount());
+        Button logoutButton = findViewById(R.id.buttonLogout);
+        logoutButton.setOnClickListener(view -> logout());
 
         loadProfile();
     }
@@ -268,7 +268,7 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
-    private void switchAccount() {
+    private void logout() {
         if (logoutCall != null) {
             return;
         }
@@ -279,7 +279,7 @@ public class SettingsActivity extends AppCompatActivity {
                 if (logoutCall == call) {
                     logoutCall = null;
                 }
-                finishSwitchAccount();
+                finishLogout();
             }
 
             @Override
@@ -288,13 +288,13 @@ public class SettingsActivity extends AppCompatActivity {
                     logoutCall = null;
                 }
                 if (!call.isCanceled()) {
-                    finishSwitchAccount();
+                    finishLogout();
                 }
             }
         });
     }
 
-    private void finishSwitchAccount() {
+    private void finishLogout() {
         Prefs.clearAuth(this);
         Intent intent = new Intent(this, LoginActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
